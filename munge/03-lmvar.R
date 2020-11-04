@@ -9,7 +9,7 @@ lmtreats <- function(atc, treatname) {
     ) %>%
     filter(
       atcneed,
-      diff >= -30.5 * 6
+      diff > -30.5 * 6
     )
 
   treatname <- paste0("ddr_", treatname)
