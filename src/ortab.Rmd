@@ -1,0 +1,104 @@
+```{r ortab, cache=cacheon}
+
+
+orfunc <- function(ef) {
+
+  # log reg regressions
+
+  ## non-resistant
+  amod <- hf_glm_mids(formula(paste0(
+    "ht == 'Non-resistant HT' ~ ", paste(modvars$var, collapse = " + ")
+  )),
+  data = imp, subset = quote(shf_ef_cat == ef & ht %in% c("Normal", "Non-resistant HT"))
+  )
+
+  asmod <- summary(pool(amod))
+
+  nval <- length(asmod$term)
+
+  asmodu <- left_join(asmod,
+    modvars,
+    by = c("term" = "var")
+  ) %>%
+    mutate(unit = replace_na(unit, 1))
+
+  ortmp_nr <- bind_cols(
+    as.character(asmod$term[2:nval]), paste0(
+      dF(exp(asmod$estimate[2:nval])^asmodu$unit[2:nval], dig = 2),
+      " (", dF(exp(asmod$estimate[2:nval] - global_z05 * asmod$std.error[2:nval])^asmodu$unit[2:nval], dig = 2),
+      "-", dF(exp(asmod$estimate[2:nval] + global_z05 * asmod$std.error[2:nval])^asmodu$unit[2:nval], dig = 2), "), ",
+      dF(asmod$p.value[2:nval], dig = 3, p = TRUE)
+    )
+  )
+
+  ## resistant
+  amod <- hf_glm_mids(formula(paste0(
+    "ht == 'Resistant HT' ~ ", paste(modvars$var, collapse = " + ")
+  )),
+  data = imp, subset = quote(shf_ef_cat == ef & ht %in% c("Normal", "Resistant HT"))
+  )
+
+  asmod <- summary(pool(amod))
+
+  asmodu <- left_join(asmod,
+    modvars,
+    by = c("term" = "var")
+  ) %>%
+    mutate(unit = replace_na(unit, 1))
+
+  ortmp_r <- bind_cols(
+    as.character(asmodu$term[2:nval]), paste0(
+      dF(exp(asmodu$estimate[2:nval])^asmodu$unit[2:nval], dig = 2),
+      " (", dF(exp(asmodu$estimate[2:nval] - global_z05 * asmodu$std.error[2:nval])^asmodu$unit[2:nval], dig = 2),
+      "-", dF(exp(asmodu$estimate[2:nval] + global_z05 * asmodu$std.error[2:nval])^asmodu$unit[2:nval], dig = 2), "), ",
+      dF(asmodu$p.value[2:nval], dig = 3, p = TRUE)
+    )
+  )
+
+  orout <- bind_cols(ortmp_nr, ortmp_r[, 2])
+  colnames(orout) <- c("Variable", "Non-resistant HT", "Resistant HT")
+  return(orout)
+}
+
+orref <- orfunc("HFrEF")
+ormref <- orfunc("HFmrEF")
+orpef <- orfunc("HFpEF")
+```
+
+```{r ortabprint, cache=cacheon, dependson="ortab"}
+orall <- Reduce(
+  function(...) {
+    full_join(...,
+      by = "Variable"
+    )
+  },
+  list(orref, ormref, orpef)
+)
+
+
+orall <- orall %>% mutate(Variable = sanitizeTextFunc(Variable))
+
+colnames(orall) <- c(
+  "Variable",
+  rep(c(levels(pdata$ht)[2:3]), 3)
+)
+
+write.xlsx(orall, paste0("./output/tabs/orall_", Sys.Date(), ".xlsx"), rowNames = FALSE)
+
+myHeader <- c(" " = 1, "HFrEF" = 2, "HFmrEF" = 2, "HFpEF" = 2)
+names(myHeader) <- c(" ", "HFrEF", "HFmrEF", "HFpEF")
+
+footnote(mykable(
+  orall,
+  fontsize = 10,
+  caption = paste0("Association between baseline characteristics and HT by EF"),
+  escape = FALSE
+) %>%
+  landscape() %>%
+  add_header_above(myHeader),
+symbol = c(
+  "Adjusted Odds Ratio (95% CI), p-value compared to Normal",
+  paste0(modvars %>% filter(unit != 1) %>% mutate(varunit = paste0(var, " presented in units of ", unit)) %>% pull(varunit), collapse = ", ")
+)
+)
+```
