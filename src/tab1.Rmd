@@ -1,108 +1,144 @@
 ```{r tab1, cache=cacheon}
 
 # overall
-tab1all_tmp <- CreateTableOne(
+tab1all <- print(CreateTableOne(
   vars = tabvars,
   data = pdata
+),
+missing = TRUE, printToggle = FALSE, nonnormal = tabvars,
+catDigits = 1, contDigits = 1,
+noSpaces = TRUE,
+explain = FALSE
 )
-tab1all <- print(tab1all_tmp,
-  varLabels = TRUE, missing = TRUE, printToggle = FALSE, nonnormal = tabvars,
-  catDigits = 1, contDigits = 1,
-  noSpaces = TRUE,
-  explain = FALSE
-)
+tab1all <- data.frame(tab1all) %>%
+  rownames_to_column(var = "var") %>% 
+  select(var, Missing)
 
 # ref
-tab1ref_tmp <- CreateTableOne(
+tab1ref <- print(CreateTableOne(
   vars = tabvars,
   strata = "ht",
   data = pdata %>% filter(shf_ef_cat == "HFrEF")
+),
+missing = FALSE, printToggle = FALSE, nonnormal = tabvars,
+test = TRUE,
+catDigits = 1, contDigits = 1,
+noSpaces = TRUE,
+explain = FALSE
 )
-tab1ref <- print(tab1ref_tmp,
-  varLabels = TRUE, missing = FALSE, printToggle = FALSE, nonnormal = tabvars,
-  test = TRUE,
-  catDigits = 1, contDigits = 1,
-  noSpaces = TRUE,
-  explain = FALSE
-)
+tab1ref <- data.frame(tab1ref) %>%
+  rownames_to_column(var = "var") %>%
+  select(var:p)
 
-#mref
-tab1mref_tmp <- CreateTableOne(
+# mref
+tab1mref <- print(CreateTableOne(
   vars = tabvars,
   strata = "ht",
   data = pdata %>% filter(shf_ef_cat == "HFmrEF")
+),
+missing = FALSE, printToggle = FALSE, nonnormal = tabvars,
+test = TRUE,
+catDigits = 1, contDigits = 1,
+noSpaces = TRUE,
+explain = FALSE
 )
-tab1mref <- print(tab1mref_tmp,
-  varLabels = TRUE, missing = FALSE, printToggle = FALSE, nonnormal = tabvars,
-  test = TRUE,
-  catDigits = 1, contDigits = 1,
-  noSpaces = TRUE,
-  explain = FALSE
-)
+tab1mref <- data.frame(tab1mref) %>%
+  rownames_to_column(var = "var") %>%
+  select(var:p)
 
-#pef
-tab1pef_tmp <- CreateTableOne(
+# pef
+tab1pef <- print(CreateTableOne(
   vars = tabvars,
   strata = "ht",
   data = pdata %>% filter(shf_ef_cat == "HFpEF")
-)
-tab1pef <- print(tab1pef_tmp,
-  varLabels = TRUE, missing = FALSE, printToggle = FALSE, nonnormal = tabvars,
-  test = TRUE,
-  catDigits = 1, contDigits = 1,
-  noSpaces = TRUE,
-  explain = FALSE
-)
-
-tab1out <- as_tibble(cbind(
-  var = rownames(tab1all), tab1all[, 2],
-  tab1ref[, c(1:4)],
-  tab1mref[, c(1:4)],
-  tab1pef[, c(1:4)]
 ),
-.name_repair = "unique"
+missing = FALSE, printToggle = FALSE, nonnormal = tabvars,
+test = TRUE,
+catDigits = 1, contDigits = 1,
+noSpaces = TRUE,
+explain = FALSE
 )
-# tab1out <- as_tibble(cbind(rownames(tab1), tab1[, 6], tab1[, c(1:2, 5, 3)]))
-
-tab1out <- tab1out %>%
+tab1pef <- data.frame(tab1pef) %>%
+  rownames_to_column(var = "var") %>%
+  select(var:p)
+  
+tab1 <- Reduce(
+  function(...) {
+    full_join(...,
+      by = "var"
+    )
+  },
+  list(tab1all, tab1ref, tab1mref, tab1pef)
+) %>%
+  # remove = Yes
+  mutate(across(everything(), str_replace_all, fixed(" = Yes"), "")) %>%
+  # to get labs and units in place
   mutate(
-    tmp_varsforfoot = var,
-    var = sub("  ", ". ", var),
-    var = sanitizeTextFunc(var)
+    var_tmp = str_split(var, " = ", simplify = TRUE)[, 1],
+    val_tmp = str_split(var, " = ", simplify = TRUE)[, 2], 
+    # if recoding or categorizing will still get org label
+    var_tmp2 = str_replace_all(var_tmp, "(_cat2|_cat)", ""),
+    # if shf/sos combination  will still get org label
+    var_tmp2 = str_replace_all(var_tmp2, "shf_sos_com_", "sos_com_"),
+  )
+  
+tab1 <- left_join(tab1,
+  meta.variables.Sheet.1 %>%
+    select(variable, label, unit),
+  by = c("var_tmp2" = "variable")
+) %>%
+  mutate(
+    Variable = coalesce(label, var_tmp),
+    Variable = if_else(!is.na(unit),
+      paste0(Variable, " (", unit, ")"),
+      Variable
+    ),
+    Variable = if_else(val_tmp != "",
+      paste0(Variable, " ", val_tmp),
+      Variable
+    )
   )
 
 
-## add footnote about ras (arb, aceir, arni)
-tab1out$var <- ifelse(stri_extract_first_words(tab1out$tmp_varsforfoot) == "shf_ras",
-  paste0(tab1out$var, footnote_marker_symbol(1)), tab1out$var
-)
+write.xlsx(tab1 %>%
+  select(Variable, Missing:p), paste0("./output/tabs/tab1_", Sys.Date(), ".xlsx"), rowNames = FALSE)
 
-## add footnote about disp income
-tab1out$var <- ifelse(stri_extract_first_words(tab1out$tmp_varsforfoot) == "scb_dispincome_cat2",
-  paste0(tab1out$var, footnote_marker_symbol(2)), tab1out$var
-)
+# footnotes
+tab1 <- tab1 %>%
+  mutate(
+    footnote1 = if_else(str_detect(var, "^shf_"), footnote_marker_symbol(1), ""),
+    footnote2 = if_else(str_detect(var, "^sos_"), footnote_marker_symbol(2), ""),
+    footnote3 = if_else(str_detect(var, "^ddr_"), footnote_marker_symbol(3), ""),
+    footnote4 = if_else(str_detect(var, "^scb_"), footnote_marker_symbol(4), ""),
+    footnote5 = if_else(str_detect(var, paste0("^(", paste0(modvars$var, collapse = "|"), ")")), 
+                        footnote_marker_symbol(5), ""),
+    footnote6 = if_else(str_detect(var, "^shf_rasarni"), footnote_marker_symbol(6), ""),
+    footnote7 = if_else(str_detect(var, "^scb_dispincome_cat"), footnote_marker_symbol(7), "")
+  ) %>%
+  unite(footnote, starts_with("footnote"), sep = "") %>%
+  mutate(
+    # so no probs
+    Variable = sanitizeTextFunc(Variable),
 
-## add fotnote stating which variables are used in multiple imputation
-tab1out$var <- ifelse(stri_extract_first_words(tab1out$tmp_varsforfoot) %in% modvars$var,
-  paste0(tab1out$var, footnote_marker_symbol(3)), tab1out$var
-)
+    Variable = paste0(Variable, footnote),
 
-tab1out <- tab1out %>% select(-tmp_varsforfoot)
+    # space in Latex output (fix this other way?)
+    Variable = sub("  ", ". ", Variable)
+  ) %>%
+  select(Variable, Missing:p)
+
 
 ## fix in order to use escape = TRUE
-colnames(tab1out) <- sanitizeTextFunc(c(
-  "Variables", "Missing (%)", rep(c(levels(pdata$ht), "p-value"), 3))
-)
-
-write.xlsx(tab1out, paste0("./output/tabs/tab1_", Sys.Date(), ".xlsx"), rowNames = FALSE)
+colnames(tab1) <- sanitizeTextFunc(c(
+  "Variables", "Missing (%)", rep(c(levels(pdata$ht), "p-value"), 3)
+))
 
 
 myHeader <- c(" " = 1, " " = 1, "HFrEF" = 4, "HFmrEF" = 4, "HFpEF" = 4)
 names(myHeader) <- c(" ", " ", "HFrEF", "HFmrEF", "HFpEF")
 
-
 footnote(
-  mykable(tab1out,
+  mykable(tab1,
     fontsize = 3,
     caption = "Baseline characteristics",
     longtable = TRUE,
@@ -111,13 +147,16 @@ footnote(
     landscape() %>%
     add_header_above(myHeader),
   general = c(
-    "Categorical variables are presented with n (%) and tested with chi-square test and continuous variables with median [q1-q3] and tested with Kruskal-Wallis test.",
-    "Variables with prefix shf_ are from the SwedeHF, sos_ fom NPR, ddr_ from DDR, shf_sos_ combinded information from SwedeHF and NPR." 
+    "Categorical variables are presented with n (%) and tested with chi-square test and continuous variables with median [q1-q3] and tested with Kruskal-Wallis test."
   ),
   symbol = c(
+    "Source: SwedeHF",
+    "Source: NPR",
+    "Source: DDR",
+    "Source: SCB",
+    "Included in the multiple imputation model (althought not necessarily imputed if there is no missing data) and logistic/cox models",
     "arb/acei/arni",
-    "Medium within index year",
-    "Included in the multiple imputation model (althought not necessarily imputed if there is no missing data) and logistic/cox models."
+    "Medium within index year"
   )
 )
 ```
