@@ -110,8 +110,7 @@ tab1 <- tab1 %>%
     footnote2 = if_else(str_detect(var, "^sos_"), footnote_marker_symbol(2), ""),
     footnote3 = if_else(str_detect(var, "^ddr_"), footnote_marker_symbol(3), ""),
     footnote4 = if_else(str_detect(var, "^scb_"), footnote_marker_symbol(4), ""),
-    footnote5 = if_else(str_detect(var, paste0("^(", paste0(modvars$var, collapse = "|"), ")")), 
-                        footnote_marker_symbol(5), ""),
+    footnote5 = if_else(var_tmp %in% modvars$var, footnote_marker_symbol(5), ""),
     footnote6 = if_else(str_detect(var, "^shf_rasarni"), footnote_marker_symbol(6), ""),
     footnote7 = if_else(str_detect(var, "^scb_dispincome_cat"), footnote_marker_symbol(7), "")
   ) %>%

@@ -1,5 +1,6 @@
 ---
 title: 'Statistical report: Resistant hypertension in SwedeHF'
+subtitle: 'DRAFT'
 author: 'Statistician: Lina Benson'
   
 date: "`r Sys.Date()`"
@@ -12,6 +13,8 @@ output:
 link-citations: yes
 bibliography: references.bib
 nocite: '@*'
+header-includes:
+   - \usepackage{draftwatermark}
 ---
 
 \newpage 
@@ -159,6 +162,15 @@ Continuous variables were modelled using splines and visually inspected for line
 \newpage
 
 ### Results
+
+The median (min-max) follow-up is 
+`r pdata %>% summarise(med = dF(median(sos_outtime_death / 365.25 * 12), dig = 1),
+                                             min = dF(min(sos_outtime_death / 365.25 * 12), dig = 1),
+                                             max = dF(max(sos_outtime_death / 365.25 * 12), dig = 1)) %>%
+                                   mutate(out = paste0(med, " (", min, "-", max, ")")) %>%
+                                   pull(out)` months for a total of 
+                                   `r pdata %>% summarise(sumpy = dF(sum(sos_outtime_death) / 365.25, dig = 0)) %>%
+                                   pull(sumpy)` patient-years of follow-up.
 
 ```{r, child = "../src/km.Rmd"}
 
