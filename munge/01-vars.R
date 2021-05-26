@@ -7,7 +7,6 @@ tabvars <- c(
   # demo
   "shf_sex",
   "shf_age",
-  # "shf_age_cat",
 
   # organizational
   "shf_indexyear",
@@ -20,25 +19,18 @@ tabvars <- c(
   "shf_durationhf",
   "shf_sos_com_hypertension",
   "sos_com_durationhypertension_cat",
-  #"sos_com_durationhypertension",
   "shf_nyha",
-  # "shf_nyha_cat",
   "shf_bmi",
   "shf_bmi_cat",
   "shf_bpsys",
   "shf_bpdia",
   "shf_map",
-  # "shf_map_cat",
   "shf_heartrate",
-  # "shf_heartrate_cat",
   "shf_gfrckdepi",
   "shf_gfrckdepi_cat",
   "shf_potassium",
-  # "shf_potassium_cat",
   "shf_hb",
-  # "shf_anemia",
-  "shf_ntpropbnp",
-  # "shf_ntpropbnp_cat",
+  "shf_ntprobnp",
 
   # treatments
   "shf_rasarni",
@@ -126,11 +118,7 @@ modvars <- tibble(
 modvars <- modvars %>%
   mutate(unit = case_when(
     var %in% c("shf_age", "shf_heartrate", "shf_hb") ~ 5,
-    var %in% c("shf_ntpropbnp") ~ 500,
+    var %in% c("shf_ntprobnp") ~ 500,
     var %in% c("sos_com_durationhypertension") ~ 365,
     TRUE ~ unit
   ))
-
-# modvarsstrata <- modvars
-# stratavars <- c("shf_age_cat", "shf_location", "shf_sos_com_ihd")
-# modvarsstrata[modvars %in% stratavars] <- paste0("strata(", stratavars, ")")

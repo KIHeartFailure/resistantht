@@ -18,7 +18,8 @@ ggplot(
   # theme(axis.text.x=element_text(angle=90, hjust=1)) ## for checking
   annotate(geom = "text", x = 1:6, y = -5, label = rep(c("Women", "Men"), 3), size = 4) +
   annotate(geom = "text", x = c(1.5, 3.5, 5.5), y = -11, label = unique(bardata$shf_ef_cat), size = 4) +
-  scale_fill_manual("", values = global_kicols) +
+  scale_fill_manual("", labels = c("Normal BP", "Non-TRH", "aTRH"), 
+                    values = global_kicols) +
   theme_minimal() +
   ylab("Percent") +
   theme(

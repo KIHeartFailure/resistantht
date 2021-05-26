@@ -1,6 +1,4 @@
 ```{r ortab, cache=cacheon}
-
-
 orfunc <- function(ef) {
 
   # log reg regressions
@@ -23,12 +21,25 @@ orfunc <- function(ef) {
     mutate(unit = replace_na(unit, 1))
 
   ortmp_nr <- bind_cols(
-    as.character(asmod$term[2:nval]), paste0(
+    var = as.character(asmod$term[2:nval]),
+    orcip = paste0(
       dF(exp(asmod$estimate[2:nval])^asmodu$unit[2:nval], dig = 2),
       " (", dF(exp(asmod$estimate[2:nval] - global_z05 * asmod$std.error[2:nval])^asmodu$unit[2:nval], dig = 2),
       "-", dF(exp(asmod$estimate[2:nval] + global_z05 * asmod$std.error[2:nval])^asmodu$unit[2:nval], dig = 2), "), ",
       dF(asmod$p.value[2:nval], dig = 3, p = TRUE)
     )
+  )
+  ortmp_nr_forest <- bind_cols(
+    var = as.character(asmod$term[2:nval]),
+    orci = paste0(
+      dF(exp(asmod$estimate[2:nval])^asmodu$unit[2:nval], dig = 2),
+      " (", dF(exp(asmod$estimate[2:nval] - global_z05 * asmod$std.error[2:nval])^asmodu$unit[2:nval], dig = 2),
+      "-", dF(exp(asmod$estimate[2:nval] + global_z05 * asmod$std.error[2:nval])^asmodu$unit[2:nval], dig = 2), ")"
+    ),
+    logor = asmod$estimate[2:nval] * asmodu$unit[2:nval],
+    lci = (asmod$estimate[2:nval] - global_z05 * asmod$std.error[2:nval]) * asmodu$unit[2:nval],
+    uci = (asmod$estimate[2:nval] + global_z05 * asmod$std.error[2:nval]) * asmodu$unit[2:nval],
+    p = dF(asmod$p.value[2:nval], dig = 3, p = TRUE)
   )
 
   ## resistant
@@ -47,20 +58,38 @@ orfunc <- function(ef) {
     mutate(unit = replace_na(unit, 1))
 
   ortmp_r <- bind_cols(
-    as.character(asmodu$term[2:nval]), paste0(
-      dF(exp(asmodu$estimate[2:nval])^asmodu$unit[2:nval], dig = 2),
-      " (", dF(exp(asmodu$estimate[2:nval] - global_z05 * asmodu$std.error[2:nval])^asmodu$unit[2:nval], dig = 2),
-      "-", dF(exp(asmodu$estimate[2:nval] + global_z05 * asmodu$std.error[2:nval])^asmodu$unit[2:nval], dig = 2), "), ",
-      dF(asmodu$p.value[2:nval], dig = 3, p = TRUE)
+    var = as.character(asmod$term[2:nval]),
+    orcip = paste0(
+      dF(exp(asmod$estimate[2:nval])^asmodu$unit[2:nval], dig = 2),
+      " (", dF(exp(asmod$estimate[2:nval] - global_z05 * asmod$std.error[2:nval])^asmodu$unit[2:nval], dig = 2),
+      "-", dF(exp(asmod$estimate[2:nval] + global_z05 * asmod$std.error[2:nval])^asmodu$unit[2:nval], dig = 2), "), ",
+      dF(asmod$p.value[2:nval], dig = 3, p = TRUE)
     )
+  )
+  ortmp_r_forest <- bind_cols(
+    var = as.character(asmod$term[2:nval]),
+    orci = paste0(
+      dF(exp(asmod$estimate[2:nval])^asmodu$unit[2:nval], dig = 2),
+      " (", dF(exp(asmod$estimate[2:nval] - global_z05 * asmod$std.error[2:nval])^asmodu$unit[2:nval], dig = 2),
+      "-", dF(exp(asmod$estimate[2:nval] + global_z05 * asmod$std.error[2:nval])^asmodu$unit[2:nval], dig = 2), ")"
+    ),
+    logor = asmod$estimate[2:nval] * asmodu$unit[2:nval],
+    lci = (asmod$estimate[2:nval] - global_z05 * asmod$std.error[2:nval]) * asmodu$unit[2:nval],
+    uci = (asmod$estimate[2:nval] + global_z05 * asmod$std.error[2:nval]) * asmodu$unit[2:nval],
+    p = dF(asmod$p.value[2:nval], dig = 3, p = TRUE)
   )
 
   orout <- bind_cols(ortmp_nr, ortmp_r[, 2])
-  colnames(orout) <- c("Variable", "Non-resistant HT", "Resistant HT")
-  return(orout)
+  colnames(orout) <- c("Variable", "Non-TRH", "aTRH")
+
+  orforest <- full_join(ortmp_nr_forest, ortmp_r_forest, by = "var")
+  colnames(orforest) <- c("var", paste0(ef, "_", rep(c("nr_", "r_"), each = 5), c("orci", "logor", "lci", "uci", "p")))
+
+  orall <- list(ortab = orout, orforest = orforest)
+  return(orall)
 }
 
-orref <- orfunc("HFrEF")
+orref <- orfunc(ef = "HFrEF")
 ormref <- orfunc("HFmrEF")
 orpef <- orfunc("HFpEF")
 ```
@@ -72,7 +101,7 @@ orall <- Reduce(
       by = "Variable"
     )
   },
-  list(orref, ormref, orpef)
+  list(orref$ortab, ormref$ortab, orpef$ortab)
 )
 
 
@@ -100,5 +129,226 @@ symbol = c(
   "Adjusted Odds Ratio (95% CI), p-value compared to Normal",
   paste0(modvars %>% filter(unit != 1) %>% mutate(varunit = paste0(var, " presented in units of ", unit)) %>% pull(varunit), collapse = ", ")
 )
+)
+```
+
+```{r forestor, fig.cap="Forest Adjusted OR", dependson="ortab", cache=cacheon}
+
+orall <- Reduce(
+  function(...) {
+    full_join(...,
+      by = "var"
+    )
+  },
+  list(orref$orforest, ormref$orforest, orpef$orforest)
+)
+
+orforest <- orall %>%
+  filter(var %in% c(
+    "shf_sexMale", "shf_age", "shf_durationhf>6mo", "shf_nyhaII", "shf_nyhaIII", "shf_nyhaIV",
+    "shf_bmi_cat>=30", "scb_educationSecondary school", "scb_educationUniversity", "shf_gfrckdepi_cat<60",
+    "shf_heartrate", "shf_sos_com_diabetesYes", "shf_sos_com_ihdYes", "sos_com_peripheralarteryYes",
+    "sos_com_strokeYes", "shf_sos_com_afYes"
+  )) %>%
+  mutate(
+    varnr = 1:n(),
+    modnameforest = case_when(
+      var == "shf_nyhaIV" ~ "NYHA IV vs I",
+      var == "shf_nyhaIII" ~ "NYHA III vs I",
+      var == "shf_nyhaII" ~ "NYHA II vs I",
+      var == "shf_durationhf>6mo" ~ "Duration HF > 6mo",
+      var == "shf_age" ~ "Age (per 5 years)",
+      var == "scb_educationUniversity" ~ "University vs Compulsory school",
+      var == "scb_educationSecondary school" ~ "Secondary vs Compulsory school",
+      var == "shf_bmi_cat>=30" ~ "BMI>=30 vs <30",
+      var == "shf_sexMale" ~ "Male vs Female",
+      var == "shf_gfrckdepi_cat<60" ~ "eGFR<60 vs >=60",
+      var == "shf_heartrate" ~ "Heart rate (per 5 beats/min)",
+      var == "shf_sos_com_diabetesYes" ~ "Diabetes",
+      var == "shf_sos_com_ihdYes" ~ "IHD",
+      var == "sos_com_peripheralarteryYes" ~ "PAD",
+      var == "sos_com_strokeYes" ~ "Stroke",
+      var == "shf_sos_com_afYes" ~ "AF",
+      TRUE ~ var
+    )
+  )
+
+orforest <- bind_rows(
+  rename_with(orforest %>% select(
+    var, varnr, modnameforest,
+    contains("_nr_")
+  ), ~ gsub("_nr_", "", .x, fixed = T)) %>%
+    mutate(ht = "Non-TRH"),
+  rename_with(orforest %>% select(
+    var, varnr,
+    contains("_r_")
+  ), ~ gsub("_r_", "", .x, fixed = T)) %>%
+    mutate(ht = "aTRH")
+)
+
+orforest <- orforest %>%
+  arrange(desc(varnr), ht)
+
+# exp(min(as.numeric(c(orforest$HFrEFlci, orforest$HFmrEFlci, orforest$HFpEFlci)), na.rm=T))  0.1675443
+# exp(max(as.numeric(c(orforest$HFrEFuci, orforest$HFmrEFuci, orforest$HFpEFuci)), na.rm=T))  2.479412
+
+xaxisvals <- c(0.1, 0.5, 1, 1.5, 2, 2.5)
+xaxistxt <- c(0.1, 0.5, 1, NA, 2, NA)
+
+cextext <- 0.8
+# c(bottom, left, top, right)
+par(mar = c(3, 14, 0, 0) + 0.2)
+
+plot(orforest$HFrEFlogor, 1:nrow(orforest),
+  xlab = "",
+  xlim = c(
+    log(0.1),
+    log(2.5) + 7
+  ),
+  ylim = c(1, nrow(orforest) + 1),
+  axes = FALSE,
+  ylab = NA,
+  cex.lab = 1,
+  main = NA,
+  cex = .5,
+  type = "p",
+  pch = 22,
+  bg = global_kicols[1],
+  col = global_kicols[1]
+)
+
+
+for (i in 1:nrow(orforest)) {
+  if (!is.na(orforest$HFrEFlci[i])) {
+    matplot(c(orforest$HFrEFlci[i], orforest$HFrEFuci[i]), c(i, i),
+      type = "l", add = TRUE, col = global_kicols[1], lwd = 1.1
+    )
+  }
+}
+
+matplot(c(0, 0), c(-1, nrow(orforest) + 0.5), type = "l", lty = 3, add = TRUE, col = "black")
+
+axis(1,
+  cex.axis = cextext, at = log(xaxisvals),
+  labels = xaxistxt
+)
+
+axis(2,
+  at = 1:(nrow(orforest)),
+  labels = orforest$modnameforest,
+  cex.axis = cextext, tick = FALSE, las = 2, line = 13, hadj = 0
+)
+
+axis(2,
+  at = 1:(nrow(orforest)),
+  labels = orforest$ht,
+  cex.axis = cextext, tick = FALSE, las = 2, line = 2, hadj = 0
+)
+
+axis(1,
+  at = -0.5, cex.axis = cextext,
+  labels = "OR (95% CI)", line = 1, tick = FALSE
+)
+
+axis(3,
+  at = 0, cex.axis = cextext,
+  labels = "HFrEF", line = -1.9, tick = FALSE
+)
+
+# mref
+
+addx <- 3.5
+
+matplot(orforest$HFmrEFlogor + addx,
+  1:nrow(orforest),
+  xlab = "",
+  xlim = c(
+    log(0.1) + addx,
+    log(2.5) + addx
+  ),
+  ylim = c(1, nrow(orforest) + 1),
+  axes = FALSE,
+  ylab = NA,
+  cex.lab = 1,
+  main = NA,
+  cex = .5,
+  type = "p",
+  pch = 22,
+  bg = global_kicols[1],
+  col = global_kicols[1],
+  add = T
+)
+
+
+for (i in 1:nrow(orforest)) {
+  matplot(c(orforest$HFmrEFlci[i] + addx, orforest$HFmrEFuci[i] + addx), c(i, i),
+    type = "l", add = TRUE, col = global_kicols[1], cex = 2
+  )
+}
+
+matplot(c(0 + addx, 0 + addx), c(-1, nrow(orforest) + 0.5), type = "l", lty = 3, add = TRUE, col = "black")
+
+axis(1,
+  cex.axis = cextext, at = log(xaxisvals) + addx,
+  labels = xaxistxt
+)
+
+axis(1,
+  at = -0.5 + addx, cex.axis = cextext,
+  labels = "OR (95% CI)", line = 1, tick = FALSE
+)
+
+axis(3,
+  at = 0 + addx, cex.axis = cextext,
+  labels = "HFmrEF", line = -1.9, tick = FALSE
+)
+
+
+# pef
+
+addx <- 7
+
+matplot(orforest$HFpEFlogor + addx,
+  1:nrow(orforest),
+  xlab = "",
+  xlim = c(
+    log(0.1) + addx,
+    log(2.5) + addx
+  ),
+  ylim = c(1, nrow(orforest) + 1),
+  axes = FALSE,
+  ylab = NA,
+  cex.lab = 1,
+  main = NA,
+  cex = .5,
+  type = "p",
+  pch = 22,
+  bg = global_kicols[1],
+  col = global_kicols[1],
+  add = T
+)
+
+
+for (i in 1:nrow(orforest)) {
+  matplot(c(orforest$HFpEFlci[i] + addx, orforest$HFpEFuci[i] + addx), c(i, i),
+    type = "l", add = TRUE, col = global_kicols[1], cex = 2
+  )
+}
+
+matplot(c(0 + addx, 0 + addx), c(-1, nrow(orforest) + 0.5), type = "l", lty = 3, add = TRUE, col = "black")
+
+axis(1,
+  cex.axis = cextext, at = log(xaxisvals) + addx,
+  labels = xaxistxt
+)
+
+axis(1,
+  at = -0.5 + addx, cex.axis = cextext,
+  labels = "OR (95% CI)", line = 1, tick = FALSE
+)
+
+axis(3,
+  at = 0 + addx, cex.axis = cextext,
+  labels = "HFpEF", line = -1.9, tick = FALSE
 )
 ```

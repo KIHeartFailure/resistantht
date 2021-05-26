@@ -11,7 +11,7 @@ noSpaces = TRUE,
 explain = FALSE
 )
 tab1all <- data.frame(tab1all) %>%
-  rownames_to_column(var = "var") %>% 
+  rownames_to_column(var = "var") %>%
   select(var, Missing)
 
 # ref
@@ -61,7 +61,7 @@ explain = FALSE
 tab1pef <- data.frame(tab1pef) %>%
   rownames_to_column(var = "var") %>%
   select(var:p)
-  
+
 tab1 <- Reduce(
   function(...) {
     full_join(...,
@@ -75,13 +75,13 @@ tab1 <- Reduce(
   # to get labs and units in place
   mutate(
     var_tmp = str_split(var, " = ", simplify = TRUE)[, 1],
-    val_tmp = str_split(var, " = ", simplify = TRUE)[, 2], 
+    val_tmp = str_split(var, " = ", simplify = TRUE)[, 2],
     # if recoding or categorizing will still get org label
     var_tmp2 = str_replace_all(var_tmp, "(_cat2|_cat)", ""),
     # if shf/sos combination  will still get org label
     var_tmp2 = str_replace_all(var_tmp2, "shf_sos_com_", "sos_com_"),
   )
-  
+
 tab1 <- left_join(tab1,
   meta.variables.Sheet.1 %>%
     select(variable, label, unit),

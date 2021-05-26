@@ -2,7 +2,7 @@
 
 # Inclusion/exclusion criteria --------------------------------------------------------
 
-pdata <- rsdata315 %>%
+pdata <- rsdata323 %>%
   filter(casecontrol == "Case")
 
 flow <- c("Number of posts (cases) in SHFDB3", nrow(pdata))
@@ -23,9 +23,9 @@ pdata <- pdata %>%
   filter(!is.na(shf_bpsys))
 flow <- rbind(flow, c("No missing systolic blood pressure", nrow(pdata)))
 
-#pdata <- pdata %>%
+# pdata <- pdata %>%
 #  filter(sos_outtime_death >= 14)
-#flow <- rbind(flow, c(">=14 days follow-up (to avoid immortal time bias*)", nrow(pdata)))
+# flow <- rbind(flow, c(">=14 days follow-up (to avoid immortal time bias*)", nrow(pdata)))
 
 pdata <- pdata %>%
   group_by(LopNr) %>%

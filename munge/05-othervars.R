@@ -4,18 +4,12 @@
 
 pdata <- pdata %>%
   mutate(
-    
-    #shf_age_cat = case_when(
-    #  shf_age < 75 ~ "<75",
-    #  shf_age >= 75 ~ ">=75"
-    #),
-
-     shf_indexyear_cat = case_when(
-      shf_indexyear <= 2010 ~ "2005-2010",
+    shf_indexyear_cat = case_when(
+      shf_indexyear <= 2010 ~ "2006-2010",
       shf_indexyear <= 2015 ~ "2011-2015",
       shf_indexyear <= 2018 ~ "2016-2018"
     ),
-    
+
     shf_ef_cat = factor(case_when(
       shf_ef == ">=50" ~ 3,
       shf_ef == "40-49" ~ 2,
@@ -24,11 +18,6 @@ pdata <- pdata %>%
     labels = c("HFrEF", "HFmrEF", "HFpEF"),
     levels = 1:3
     ),
-    
-    #shf_nyha_cat = case_when(
-    #  shf_nyha %in% c("I", "II") ~ "I-II",
-    #  shf_nyha %in% c("III", "IV") ~ "III-IV"
-    #),
 
     shf_smoking_cat = factor(case_when(
       shf_smoking %in% c("Never") ~ 1,
@@ -37,27 +26,6 @@ pdata <- pdata %>%
     labels = c("Never", "Former/Current"),
     levels = 1:2
     ),
-
-    #shf_map_cat = case_when(
-    #  shf_map <= 90 ~ "<=90",
-    #  shf_map > 90 ~ ">90"
-    #),
-
-    #shf_potassium_cat = factor(
-    #  case_when(
-    #    is.na(shf_potassium) ~ NA_real_,
-    #    shf_potassium < 3.5 ~ 2,
-    #    shf_potassium <= 5 ~ 1,
-    #    shf_potassium > 5 ~ 3
-    #  ),
-    #  labels = c("normakalemia", "hypokalemia", "hyperkalemia"),
-    #  levels = 1:3
-    #),
-
-    #shf_heartrate_cat = case_when(
-    #  shf_heartrate <= 70 ~ "<=70",
-    #  shf_heartrate > 70 ~ ">70"
-    #),
 
     shf_device_cat = factor(case_when(
       is.na(shf_device) ~ NA_real_,
@@ -109,34 +77,25 @@ pdata <- pdata %>%
         sos_com_diabetes == "Yes" ~ "Yes",
       TRUE ~ "No"
     ),
-    # Anemia
-    #shf_anemia = case_when(
-    #  is.na(shf_hb) ~ NA_character_,
-    #  shf_sex == "Female" & shf_hb < 120 | shf_sex == "Male" & shf_hb < 130 ~ "Yes",
-    #  TRUE ~ "No"
-    #),
-    
-    ddr_rasarni = case_when(ddr_acei == "Yes" | ddr_arb == "Yes" | ddr_arni == "Yes" ~ "Yes", 
-                            TRUE ~ "No"),
-    
-    ht = factor(case_when((shf_bpsys >= 140 | shf_sos_com_diabetes == "Yes" & shf_bpsys >= 135) & 
-                     ddr_ccbl == "Yes" & ddr_diuretic == "Yes" & ddr_rasarni == "Yes" ~ 3,
-                   shf_bpsys >= 140 | shf_sos_com_diabetes == "Yes" & shf_bpsys >= 135 ~ 2,
-                   TRUE ~ 1),
-                levels = 1:3, 
-                labels = c("Normal", "Non-resistant HT", "Resistant HT")),
- #   ht2 = factor(case_when((shf_bpsys >= 140 | shf_sos_com_diabetes == "Yes" & shf_bpsys >= 135) & 
-#                      ddr_ccbl == "Yes" & ddr_diuretic == "Yes" & ddr_rasarni == "Yes" & ddr_mra == "Yes" ~ 4,
-#                    (shf_bpsys >= 140 | shf_sos_com_diabetes == "Yes" & shf_bpsys >= 135) & 
-#                      ddr_ccbl == "Yes" & ddr_diuretic == "Yes" & ddr_rasarni == "Yes" ~ 3,
-#                    shf_bpsys >= 140 | shf_sos_com_diabetes == "Yes" & shf_bpsys >= 135 ~ 2,
-#                    TRUE ~ 1),
-#                 levels = 1:4, 
-#                 labels = c("Normal", "Non-resistant HT", "Resistant HT", "Refractory HT")),
+
+    ddr_rasarni = case_when(
+      ddr_acei == "Yes" | ddr_arb == "Yes" | ddr_arni == "Yes" ~ "Yes",
+      TRUE ~ "No"
+    ),
+
+    ht = factor(case_when(
+      (shf_bpsys >= 140 | shf_sos_com_diabetes == "Yes" & shf_bpsys >= 135) &
+        ddr_ccbl == "Yes" & ddr_diuretic == "Yes" & ddr_rasarni == "Yes" ~ 3,
+      shf_bpsys >= 140 | shf_sos_com_diabetes == "Yes" & shf_bpsys >= 135 ~ 2,
+      TRUE ~ 1
+    ),
+    levels = 1:3,
+    labels = c("Normal", "Non-resistant HT", "Resistant HT")
+    ),
 
     # Outcomes
 
-        # composite outcome
+    # composite outcome
     sos_out_deathcvhosphf = case_when(
       sos_out_deathcv == "Yes" |
         sos_out_hosphf == "Yes" ~ "Yes",
@@ -148,7 +107,16 @@ pdata <- pdata %>%
       sos_out_deathcvhosphf == "Yes" ~ 1,
       sos_out_death == "Yes" ~ 2,
       TRUE ~ 0
-    )
+    ),
+
+    # 3 yr
+    sos_out_deathcvhosphf = ifelse(sos_outtime_hosphf <= 3 * 365, as.character(sos_out_deathcvhosphf), "No"),
+    sos_out_hosphf = ifelse(sos_outtime_hosphf <= 3 * 365, as.character(sos_out_hosphf), "No"),
+    sos_outtime_hosphf = pmin(sos_outtime_hosphf, 365 * 3),
+
+    sos_out_deathcv = ifelse(sos_outtime_death <= 3 * 365, as.character(sos_out_deathcv), "No"),
+    sos_out_death = ifelse(sos_outtime_death <= 3 * 365, as.character(sos_out_death), "No"),
+    sos_outtime_death = pmin(sos_outtime_death, 365 * 3)
   )
 
 
@@ -177,35 +145,6 @@ pdata <- left_join(
     )
   ) %>%
   select(-incmed)
-
-# ntprobnp
-
-#ntprobnp <- pdata %>%
-#  group_by(shf_ef) %>%
-#  summarise(
-#    ntmed = quantile(shf_ntpropbnp,
-#      probs = 0.5,
-#      na.rm = TRUE
-#    ),
-#    .groups = "drop_last"
-#  )
-
-#pdata <- left_join(
-#  pdata,
-#  ntprobnp,
-#  by = c("shf_ef")
-#) %>%
-#  mutate(
-#    shf_ntpropbnp_cat = case_when(
-#      shf_ntpropbnp < ntmed ~ 1,
-#      shf_ntpropbnp >= ntmed ~ 2
-#    ),
-#    shf_ntpropbnp_cat = factor(shf_ntpropbnp_cat,
-#      levels = 1:2,
-#      labels = c("Below medium within EF", "Above medium within EF")
-#    )
-#  ) %>%
-#  select(-ntmed)
 
 pdata <- pdata %>%
   mutate_if(is_character, factor)
