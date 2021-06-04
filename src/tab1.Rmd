@@ -6,13 +6,15 @@ tab1all <- print(CreateTableOne(
   data = pdata
 ),
 missing = TRUE, printToggle = FALSE, nonnormal = tabvars,
-catDigits = 1, contDigits = 1,
+catDigits = 0, contDigits = 0, pDigits = 3,
 noSpaces = TRUE,
 explain = FALSE
 )
 tab1all <- data.frame(tab1all) %>%
   rownames_to_column(var = "var") %>%
-  select(var, Missing)
+  select(var, Missing) %>%
+  mutate(Missing = dF(as.numeric(Missing), 0), 
+         Missing = gsub("NA", "", Missing))
 
 # ref
 tab1ref <- print(CreateTableOne(
@@ -22,7 +24,7 @@ tab1ref <- print(CreateTableOne(
 ),
 missing = FALSE, printToggle = FALSE, nonnormal = tabvars,
 test = TRUE,
-catDigits = 1, contDigits = 1,
+catDigits = 0, contDigits = 0, pDigits = 3,
 noSpaces = TRUE,
 explain = FALSE
 )
@@ -38,7 +40,7 @@ tab1mref <- print(CreateTableOne(
 ),
 missing = FALSE, printToggle = FALSE, nonnormal = tabvars,
 test = TRUE,
-catDigits = 1, contDigits = 1,
+catDigits = 0, contDigits = 0, pDigits = 3,
 noSpaces = TRUE,
 explain = FALSE
 )
@@ -54,7 +56,7 @@ tab1pef <- print(CreateTableOne(
 ),
 missing = FALSE, printToggle = FALSE, nonnormal = tabvars,
 test = TRUE,
-catDigits = 1, contDigits = 1,
+catDigits = 0, contDigits = 0, pDigits = 3,
 noSpaces = TRUE,
 explain = FALSE
 )
