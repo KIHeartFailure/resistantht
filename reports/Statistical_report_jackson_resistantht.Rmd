@@ -120,14 +120,15 @@ was included as the Nelson-Aalen estimator.
 ## Associations with HT
 
 Logistic regression models were used to evaluate the association 
-between baseline characteristics and HT in each EF group separately. 
+between baseline characteristics and HT in each EF group separately using the interaction term for the respective variable and EF. 
 Different models were used for Non-resistant HT vs Normal and Resistant HT vs Normal. 
-
-### Results
 
 ```{r, child = "../src/ortab.Rmd"}
 
 ```
+
+\clearpage
+\newpage
 
 ## Association HT vs outcomes
 
@@ -140,12 +141,13 @@ The following outcomes are considered:
 
 Incidence per 1000 py was calculated with 95% Poisson confidence intervals. 
 
-The outcomes are presented with the 1 - Kaplan-Meier curves
-and tested with the log-rank test (note that the log-rank test is theoretically 
+The outcomes are presented with the 1 - Kaplan-Meier curves (for outcomes including all-cause mortality) 
+or cumulative incidence curves treating death as a competing event and tested with the log-rank test (note that the log-rank test is theoretically 
 redundant since the cox regression gives the same information). 
 
 Cox proportional hazards regressions were used to evaluate the association 
-between HT and the respective outcomes in each EF group separately. 
+between HT and the respective outcomes. The interaction between EF and HT was included enabling presentation in each 
+EF group separately and at the same time being ale to statistically test for differences between EF groups.   
 
 Data were censored at 2019-12-31, after 3 years of follow-up 
 or death/emigration, so this assumes that the risk of cv mortality and hf hospitalization 
@@ -168,8 +170,6 @@ There were no signs of non-proportional hazards.
 
 \clearpage
 \newpage
-
-### Results
 
 The median (min-max) follow-up is 
 `r pdata %>% summarise(med = dF(median(sos_outtime_death / 365.25 * 12), dig = 1),

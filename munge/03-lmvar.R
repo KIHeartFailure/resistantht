@@ -45,6 +45,7 @@ lmtreats("^(C08|C07FB|C09BB|C09DB|C09DX(?!02|04|05)|C09XA53|C09XA54|C09BX01|C09B
 lmtreats("^C03DA", "mra")
 lmtreats("^C07", "bbl")
 lmtreats("^(C02LE01|C02CA01|C02CA04|C02CA06|G04CA03)", "abl")
+lmtreats("^C02DB02", "hydralazine")
 
 pdata <- pdata %>%
   mutate_if(is_character, factor)

@@ -31,6 +31,8 @@ tabvars <- c(
   "shf_potassium",
   "shf_hb",
   "shf_ntprobnp",
+  "shf_ntprobnp_af",
+  "shf_ntprobnp_noaf",
 
   # treatments
   "shf_rasarni",
@@ -46,6 +48,7 @@ tabvars <- c(
   "ddr_loop",
   "ddr_ccbl",
   "shf_nitrate",
+  "ddr_hydralazine",
   "shf_asaantiplatelet",
   "shf_anticoagulantia",
   "shf_statin",
@@ -87,7 +90,9 @@ tabvars_not_in_mod <- c(
   "shf_map",
   "shf_gfrckdepi",
   "shf_bmi",
-
+  "shf_ntprobnp_af",
+  "shf_ntprobnp_noaf",
+  
   # treatments
   "shf_rasarni",
   "ddr_rasarni",
@@ -102,6 +107,7 @@ tabvars_not_in_mod <- c(
   "ddr_loop",
   "ddr_ccbl",
   "shf_nitrate",
+  "ddr_hydralazine",
   "shf_asaantiplatelet",
   "shf_anticoagulantia",
   "shf_statin",

@@ -10,7 +10,7 @@ logging_level: INFO
 load_libraries: TRUE
 libraries: ggplot2, purrr, dplyr, tidyr, tibble, stringr, stringi, lubridate,
          kableExtra, tableone, openxlsx, haven, survival, epitools, mice, miceadds, 
-         car, nnet,
+         car, nnet, hfmisc, cmprsk,
          parallel, doParallel, foreach
 as_factors: FALSE
 tables_type: tibble

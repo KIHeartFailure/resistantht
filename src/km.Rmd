@@ -1,7 +1,7 @@
 ```{r km, cache=cacheon}
 
-kmfunc <- function(time, event, eventname, efcat, yposplus = rep(0, 3)) {
-  fit <- survfit(formula(paste0("Surv(", time, ",", event, "=='Yes') ~ ht")),
+kmfunc <- function(time, event, eventcr = NULL, eventname, efcat, yposplus = rep(0, 3)) {
+  fits <- survfit(formula(paste0("Surv(", time, ",", event, "=='Yes') ~ ht")),
     data = pdata %>% filter(shf_ef_cat == efcat)
   )
 
@@ -12,29 +12,59 @@ kmfunc <- function(time, event, eventname, efcat, yposplus = rep(0, 3)) {
 
   p <- dF(pchisq(sd$chisq, length(sd$n) - 1, lower.tail = FALSE), dig = 3, p = TRUE)
 
-  # c(bottom, left, top, right)
-  par(mar = c(4, 4, 1, 4.5) + 0.1)
-  plots <- plot(fit,
-    fun = "event",
-    ylab = eventname,
-    xscale = 30.5,
-    yscale = 100,
-    col = global_kicols,
-    mark.time = FALSE,
-    bty = "n",
-    xlim = c(0, 3 * 365),
-    ylim = c(0, 1),
-    xlab = "Years",
-    axes = F,
-    lwd = 3,
-    lty = c(1, 2, 3),
-    xaxs = "i", yaxs = "i"
-  )
+  if (!is.null(eventcr)) {
+    fit <- cmprsk::cuminc(
+      ftime = pdata %>% filter(shf_ef_cat == efcat) %>% pull(!!sym(time)),
+      fstatus = pdata %>% filter(shf_ef_cat == efcat) %>% pull(!!sym(eventcr)),
+      cencode = 0,
+      group = pdata %>% filter(shf_ef_cat == efcat) %>% pull(ht)
+    )
 
+    # c(bottom, left, top, right)
+    par(mar = c(7, 6, 1, 4.5) + 0.1)
+
+    plot(fit[1:3],
+      ylab = eventname,
+      col = global_kicols,
+      wh = c(1110, 1110),
+      xlim = c(0, 3 * 365),
+      ylim = c(0, .5),
+      xlab = "Years",
+      axes = F,
+      lwd = 3,
+      lty = c(1, 2),
+      xaxs = "i", yaxs = "i"
+    )
+  } else {
+
+    # c(bottom, left, top, right)
+    par(mar = c(7, 6, 1, 4.5) + 0.1)
+    plots <- plot(fits,
+      fun = "event",
+      ylab = eventname,
+      xscale = 30.5,
+      yscale = 100,
+      col = global_kicols,
+      mark.time = FALSE,
+      bty = "n",
+      xlim = c(0, 3 * 365),
+      ylim = c(0, .5),
+      xlab = "Years",
+      axes = F,
+      lwd = 3,
+      lty = c(1, 2, 3),
+      xaxs = "i", yaxs = "i"
+    )
+  }
   axis(2, seq(0, 1, 0.25), seq(0, 100, 25), las = 2)
   axis(1, at = seq(0, 3, 1) * 365, seq(0, 3, 1))
 
-  ypos <- 1 - summary(fit, 3 * 365)$surv
+  if (!is.null(eventcr)) {
+    ypos <- timepoints(fit[1:3], 364 * 3)$est
+  } else {
+    ypos <- 1 - summary(fits, 364 * 3)$surv
+  }
+
   ytext <- c("Normal BP", "Non-TRH", "aTRH")
 
   ylabs <- bind_cols(ypos = ypos, ytext = ytext) %>%
@@ -48,7 +78,19 @@ kmfunc <- function(time, event, eventname, efcat, yposplus = rep(0, 3)) {
     las = 1
   )
 
-  text(0.1 * 365, 0.75, paste0("Log-rank p = ", p), pos = 4)
+  mtext("No. at risk", side = 1, line = 3, at = -260, adj = 0, cex = 1)
+
+  mtext("Normal BP", side = 1, line = 4, at = -240, adj = 0, cex = 1)
+  mtext("Non-TRH", side = 1, line = 5, at = -240, adj = 0, cex = 1)
+  mtext("aTRH", side = 1, line = 6, at = -240, adj = 0, cex = 1)
+
+  nrisk <- summary(fits, seq(0, 3, 1) * 365)$n.risk
+
+  axis(1, at = seq(0, 3, 1) * 365, labels = nrisk[1:4], line = 3, tick = FALSE, cex.axis = 1)
+  axis(1, at = seq(0, 3, 1) * 365, labels = nrisk[5:8], line = 4, tick = FALSE, cex.axis = 1)
+  axis(1, at = seq(0, 3, 1) * 365, labels = nrisk[9:12], line = 5, tick = FALSE, cex.axis = 1)
+
+  text(0.1 * 365, 0.45, paste0("Log-rank p = ", p), pos = 4)
 }
 ```
 
@@ -56,28 +98,34 @@ kmfunc <- function(time, event, eventname, efcat, yposplus = rep(0, 3)) {
 kmfunc(
   time = "sos_outtime_hosphf",
   event = "sos_out_deathcvhosphf",
+  eventcr = "sos_out_deathcvhosphf_cr",
   eventname = "First HF hospitalization/CV Death (%)",
   efcat = "HFrEF",
-  yposplus = c(-0.015, +0.015, 0) # lowest, middle, highest
+  yposplus = c(-0.003, 0.003, 00) # lowest, middle, highest
 )
 ```
 
 ```{r kmhfhosprEF, fig.cap="1-KM First HF hospitalization HFrEF", cache=cacheon, dependson="km"}
-kmfunc("sos_outtime_hosphf", "sos_out_hosphf", "First HF hospitalization (%)",
+kmfunc("sos_outtime_hosphf", "sos_out_hosphf",
+  eventcr = "sos_out_hosphf_cr",
+  "First HF hospitalization (%)",
   efcat = "HFrEF",
-  yposplus = c(-0.005, 0.005, 0)
+  yposplus = c(0, 0, 0)
 )
 ```
 
 ```{r kmcvdrEF, fig.cap="1-KM CV Death HFrEF", cache=cacheon, dependson="km"}
-kmfunc("sos_outtime_death", "sos_out_deathcv", "CV Death (%)",
+kmfunc("sos_outtime_death", "sos_out_deathcv",
+  eventcr = "sos_out_deathcv_cr",
+  "CV Death (%)",
   efcat = "HFrEF",
   yposplus = c(0, 0, 0)
 )
 ```
 
 ```{r kmdeathrEF, fig.cap="1-KM Death HFrEF", cache=cacheon, dependson="km"}
-kmfunc("sos_outtime_death", "sos_out_death", "Death (%)",
+kmfunc("sos_outtime_death", "sos_out_death",
+  eventname = "Death (%)",
   efcat = "HFrEF",
   yposplus = c(0, 0, 0)
 )
@@ -90,30 +138,36 @@ kmfunc("sos_outtime_death", "sos_out_death", "Death (%)",
 kmfunc(
   time = "sos_outtime_hosphf",
   event = "sos_out_deathcvhosphf",
+  eventcr = "sos_out_deathcvhosphf_cr",
   eventname = "First HF hospitalization/CV Death (%)",
   efcat = "HFmrEF",
-  yposplus = c(-0.01, 0, +0.02)
+  yposplus = c(-0.0, 0, +0.0)
 )
 ```
 
 ```{r kmhfhospmrEF, fig.cap="1-KM First HF hospitalization HFmrEF", cache=cacheon, dependson="km"}
-kmfunc("sos_outtime_hosphf", "sos_out_hosphf", "First HF hospitalization (%)",
+kmfunc("sos_outtime_hosphf", "sos_out_hosphf",
+  eventcr = "sos_out_hosphf_cr",
+  "First HF hospitalization (%)",
   efcat = "HFmrEF",
-  yposplus = c(0, -0.0025, 0.02)
+  yposplus = c(0, -0.007, 0.007)
 )
 ```
 
 ```{r kmcvdmrEF, fig.cap="1-KM CV Death HFmrEF", cache=cacheon, dependson="km"}
-kmfunc("sos_outtime_death", "sos_out_deathcv", "CV Death (%)",
+kmfunc("sos_outtime_death", "sos_out_deathcv",
+  eventcr = "sos_out_deathcv_cr",
+  "CV Death (%)",
   efcat = "HFmrEF",
-  yposplus = c(0, -0.01, 0.01)
+  yposplus = c(0, -0.0, 0.0)
 )
 ```
 
 ```{r kmdeathmrEF, fig.cap="1-KM Death HFmrEF", cache=cacheon, dependson="km"}
-kmfunc("sos_outtime_death", "sos_out_death", "Death (%)",
+kmfunc("sos_outtime_death", "sos_out_death",
+  eventname = "Death (%)",
   efcat = "HFmrEF",
-  yposplus = c(0, 0, 0.01)
+  yposplus = c(0, 0, 0.0)
 )
 ```
 
@@ -124,28 +178,34 @@ kmfunc("sos_outtime_death", "sos_out_death", "Death (%)",
 kmfunc(
   time = "sos_outtime_hosphf",
   event = "sos_out_deathcvhosphf",
+  eventcr = "sos_out_deathcvhosphf_cr",
   eventname = "First HF hospitalization/CV Death (%)",
   efcat = "HFpEF",
-  yposplus = c(0, -0.015, 0.01)
+  yposplus = c(0, -0.007, 0.007)
 )
 ```
 
 ```{r kmhfhosppEF, fig.cap="1-KM First HF hospitalization HFpEF", cache=cacheon, dependson="km"}
-kmfunc("sos_outtime_hosphf", "sos_out_hosphf", "First HF hospitalization (%)",
+kmfunc("sos_outtime_hosphf", "sos_out_hosphf",
+  eventcr = "sos_out_hosphf_cr",
+  "First HF hospitalization (%)",
   efcat = "HFpEF",
-  yposplus = c(0, 0, 0.02)
+  yposplus = c(0, -0.006, 0.006)
 )
 ```
 
 ```{r kmcvdpEF, fig.cap="1-KM CV Death HFpEF", cache=cacheon, dependson="km"}
-kmfunc("sos_outtime_death", "sos_out_deathcv", "CV Death (%)",
+kmfunc("sos_outtime_death", "sos_out_deathcv",
+  eventcr = "sos_out_deathcv_cr",
+  "CV Death (%)",
   efcat = "HFpEF",
-  yposplus = c(-0.02, 0, 0.005)
+  yposplus = c(-0.005, 0, 0.00)
 )
 ```
 
 ```{r kmdeathpEF, fig.cap="1-KM Death HFpEF", cache=cacheon, dependson="km"}
-kmfunc("sos_outtime_death", "sos_out_death", "Death (%)",
+kmfunc("sos_outtime_death", "sos_out_death",
+  eventname = "Death (%)",
   efcat = "HFpEF",
   yposplus = c(0, 0, 0)
 )

@@ -92,6 +92,10 @@ pdata <- pdata %>%
     levels = 1:3,
     labels = c("Normal", "Non-resistant HT", "Resistant HT")
     ),
+    
+    # sep ntprobnp by af
+    shf_ntprobnp_af = if_else(shf_sos_com_af == "Yes", shf_ntprobnp, NA_real_),
+    shf_ntprobnp_noaf = if_else(shf_sos_com_af == "No", shf_ntprobnp, NA_real_),
 
     # Outcomes
 
@@ -102,13 +106,6 @@ pdata <- pdata %>%
       TRUE ~ "No"
     ),
 
-    # competing event outcome
-    sos_out_deathcvhosphf_comp = case_when(
-      sos_out_deathcvhosphf == "Yes" ~ 1,
-      sos_out_death == "Yes" ~ 2,
-      TRUE ~ 0
-    ),
-
     # 3 yr
     sos_out_deathcvhosphf = ifelse(sos_outtime_hosphf <= 3 * 365, as.character(sos_out_deathcvhosphf), "No"),
     sos_out_hosphf = ifelse(sos_outtime_hosphf <= 3 * 365, as.character(sos_out_hosphf), "No"),
@@ -116,7 +113,12 @@ pdata <- pdata %>%
 
     sos_out_deathcv = ifelse(sos_outtime_death <= 3 * 365, as.character(sos_out_deathcv), "No"),
     sos_out_death = ifelse(sos_outtime_death <= 3 * 365, as.character(sos_out_death), "No"),
-    sos_outtime_death = pmin(sos_outtime_death, 365 * 3)
+    sos_outtime_death = pmin(sos_outtime_death, 365 * 3), 
+    
+    # competing event outcome
+    sos_out_deathcvhosphf_cr = create_crevent(sos_out_deathcvhosphf, sos_out_death), 
+    sos_out_deathcv_cr = create_crevent(sos_out_deathcv, sos_out_death), 
+    sos_out_hosphf_cr = create_crevent(sos_out_hosphf, sos_out_death)
   )
 
 
