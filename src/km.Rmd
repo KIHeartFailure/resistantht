@@ -32,7 +32,7 @@ kmfunc <- function(time, event, eventcr = NULL, eventname, efcat, yposplus = rep
       xlab = "Years",
       axes = F,
       lwd = 3,
-      lty = c(1, 2),
+      lty = 1,
       xaxs = "i", yaxs = "i"
     )
   } else {
@@ -52,7 +52,7 @@ kmfunc <- function(time, event, eventcr = NULL, eventname, efcat, yposplus = rep
       xlab = "Years",
       axes = F,
       lwd = 3,
-      lty = c(1, 2, 3),
+      lty = 1,
       xaxs = "i", yaxs = "i"
     )
   }

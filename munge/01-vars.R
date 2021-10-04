@@ -31,8 +31,6 @@ tabvars <- c(
   "shf_potassium",
   "shf_hb",
   "shf_ntprobnp",
-  "shf_ntprobnp_af",
-  "shf_ntprobnp_noaf",
 
   # treatments
   "shf_rasarni",
@@ -90,9 +88,7 @@ tabvars_not_in_mod <- c(
   "shf_map",
   "shf_gfrckdepi",
   "shf_bmi",
-  "shf_ntprobnp_af",
-  "shf_ntprobnp_noaf",
-  
+
   # treatments
   "shf_rasarni",
   "ddr_rasarni",
