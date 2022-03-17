@@ -1,0 +1,33 @@
+
+```{r barsens, fig.cap = "Prevalence of normal blood pressure, non-resistant hypertension and resistant hypertension according to heart failure phenotype and sex - Sensitivity analysis"}
+
+bardata <- pdata %>%
+  group_by(shf_ef_cat, shf_sex) %>%
+  count(htsens) %>%
+  mutate(freq = (n / sum(n)) * 100) %>%
+  ungroup() %>%
+  mutate(EFsex = paste(shf_ef_cat, shf_sex),
+         EFsex = factor(EFsex, levels = paste(rep(levels(pdata$shf_ef_cat), each = 2), c("Female", "Male"))))
+
+
+ggplot(
+  bardata,
+  aes(x = EFsex, y = freq, fill = htsens)
+) +
+  geom_col() +
+  # theme(axis.text.x=element_text(angle=90, hjust=1)) ## for checking
+  annotate(geom = "text", x = 1:6, y = -5, label = rep(c("Women", "Men"), 3), size = 4) +
+  annotate(geom = "text", x = c(1.5, 3.5, 5.5), y = -11, label = unique(bardata$shf_ef_cat), size = 4) +
+  scale_fill_manual("", labels = c("Normal BP", "Non-TRH", "aTRH"), 
+                    values = global_kicols) +
+  theme_minimal() +
+  ylab("Percent") +
+  theme(
+    # legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+```

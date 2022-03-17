@@ -89,6 +89,17 @@ AND ddr_ccbl == "Yes" AND ddr_diuretic == "Yes" AND ddr_rasarni == "Yes" -> Resi
 
 - else Normal
 
+A sensitivity analysis was performed repeating all analyses, including the multiple imputation, using the definition of HT as: 
+
+- if shf_bpsys >= 130 AND ddr_ccbl == "Yes" AND ddr_diuretic == "Yes" AND ddr_rasarni == "Yes"  -> Resistant HT
+
+- if shf_bpsys < 130 AND ddr_ccbl == "Yes" AND ddr_diuretic == "Yes" AND ddr_rasarni == "Yes" AND 
+(ddr_abl == "Yes" OR ddr_mra == "Yes" OR ddr_bbl == "Yes")  -> Resistant HT
+
+- if shf_bpsys >= 130 without meds as above -> Non-resistant HT
+
+- else Normal
+
 # Statistical analysis 
 
 ## General
@@ -115,6 +126,19 @@ was included as the Nelson-Aalen estimator.
 ```
 
 \clearpage
+\newpage
+
+### Sensitivity analysis
+
+```{r, child = "../src/tab1sens.Rmd"}
+
+```
+
+```{r, child = "../src/barplotsens.Rmd"}
+
+```
+
+\clearpage
 \newpage 
 
 ## Associations with HT
@@ -124,6 +148,15 @@ between baseline characteristics and HT in each EF group separately using the in
 Different models were used for Non-resistant HT vs Normal and Resistant HT vs Normal. 
 
 ```{r, child = "../src/ortab.Rmd"}
+
+```
+
+\clearpage
+\newpage
+
+### Sensitivity analysis
+
+```{r, child = "../src/ortabsens.Rmd"}
 
 ```
 
@@ -185,6 +218,19 @@ The median (min-max) follow-up is
 ```
 
 ```{r, child = "../src/coxtab.Rmd"}
+
+```
+
+\clearpage
+\newpage
+
+### Sensitivity analysis
+
+```{r, child = "../src/kmsens.Rmd"}
+
+```
+
+```{r, child = "../src/coxtabsens.Rmd"}
 
 ```
 

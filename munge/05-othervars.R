@@ -92,6 +92,19 @@ pdata <- pdata %>%
     levels = 1:3,
     labels = c("Normal", "Non-resistant HT", "Resistant HT")
     ),
+    
+    htsens = factor(case_when(
+      shf_bpsys >= 130 &
+        ddr_ccbl == "Yes" & ddr_diuretic == "Yes" & ddr_rasarni == "Yes" ~ 3,
+      shf_bpsys < 130 &
+        ddr_ccbl == "Yes" & ddr_diuretic == "Yes" & ddr_rasarni == "Yes" & 
+        (ddr_abl == "Yes" | ddr_mra == "Yes" | ddr_bbl == "Yes") ~ 3,
+      shf_bpsys >= 130 ~ 2,
+      TRUE ~ 1
+    ),
+    levels = 1:3,
+    labels = c("Normal", "Non-resistant HT", "Resistant HT")
+    ),
 
     # Outcomes
 

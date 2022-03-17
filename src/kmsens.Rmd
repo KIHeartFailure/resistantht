@@ -1,0 +1,212 @@
+```{r kmsens, cache=cacheon}
+
+kmfunc <- function(time, event, eventcr = NULL, eventname, efcat, yposplus = rep(0, 3)) {
+  fits <- survfit(formula(paste0("Surv(", time, ",", event, "=='Yes') ~ htsens")),
+    data = pdata %>% filter(shf_ef_cat == efcat)
+  )
+
+  ## logrank
+  sd <- survdiff(formula(paste0("Surv(", time, ",", event, "=='Yes') ~ htsens")),
+    data = pdata %>% filter(shf_ef_cat == efcat)
+  )
+
+  p <- dF(pchisq(sd$chisq, length(sd$n) - 1, lower.tail = FALSE), dig = 3, p = TRUE)
+
+  if (!is.null(eventcr)) {
+    fit <- cmprsk::cuminc(
+      ftime = pdata %>% filter(shf_ef_cat == efcat) %>% pull(!!sym(time)),
+      fstatus = pdata %>% filter(shf_ef_cat == efcat) %>% pull(!!sym(eventcr)),
+      cencode = 0,
+      group = pdata %>% filter(shf_ef_cat == efcat) %>% pull(htsens)
+    )
+
+    # c(bottom, left, top, right)
+    par(mar = c(7, 6, 1, 4.5) + 0.1)
+
+    plot(fit[1:3],
+      ylab = eventname,
+      col = global_kicols,
+      wh = c(1110, 1110),
+      xlim = c(0, 3 * 365),
+      ylim = c(0, .5),
+      xlab = "Years",
+      axes = F,
+      lwd = 3,
+      lty = 1,
+      xaxs = "i", yaxs = "i"
+    )
+  } else {
+
+    # c(bottom, left, top, right)
+    par(mar = c(7, 6, 1, 4.5) + 0.1)
+    plots <- plot(fits,
+      fun = "event",
+      ylab = eventname,
+      xscale = 30.5,
+      yscale = 100,
+      col = global_kicols,
+      mark.time = FALSE,
+      bty = "n",
+      xlim = c(0, 3 * 365),
+      ylim = c(0, .5),
+      xlab = "Years",
+      axes = F,
+      lwd = 3,
+      lty = 1,
+      xaxs = "i", yaxs = "i"
+    )
+  }
+  axis(2, seq(0, 1, 0.25), seq(0, 100, 25), las = 2)
+  axis(1, at = seq(0, 3, 1) * 365, seq(0, 3, 1))
+
+  if (!is.null(eventcr)) {
+    ypos <- timepoints(fit[1:3], 364 * 3)$est
+  } else {
+    ypos <- 1 - summary(fits, 364 * 3)$surv
+  }
+
+  ytext <- c("Normal BP", "Non-TRH", "aTRH")
+
+  ylabs <- bind_cols(ypos = ypos, ytext = ytext) %>%
+    arrange(ypos)
+
+  mtext(
+    side = 4,
+    line = .2,
+    at = ylabs$ypos + yposplus,
+    ylabs$ytext,
+    las = 1
+  )
+
+  mtext("No. at risk", side = 1, line = 3, at = -260, adj = 0, cex = 1)
+
+  mtext("Normal BP", side = 1, line = 4, at = -240, adj = 0, cex = 1)
+  mtext("Non-TRH", side = 1, line = 5, at = -240, adj = 0, cex = 1)
+  mtext("aTRH", side = 1, line = 6, at = -240, adj = 0, cex = 1)
+
+  nrisk <- summary(fits, seq(0, 3, 1) * 365)$n.risk
+
+  axis(1, at = seq(0, 3, 1) * 365, labels = nrisk[1:4], line = 3, tick = FALSE, cex.axis = 1)
+  axis(1, at = seq(0, 3, 1) * 365, labels = nrisk[5:8], line = 4, tick = FALSE, cex.axis = 1)
+  axis(1, at = seq(0, 3, 1) * 365, labels = nrisk[9:12], line = 5, tick = FALSE, cex.axis = 1)
+
+  text(0.1 * 365, 0.45, paste0("Log-rank p = ", p), pos = 4)
+}
+```
+
+```{r kmdeathhfhosprEFsens, fig.cap="1-KM First HF hospitalization/CV Death HFrEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc(
+  time = "sos_outtime_hosphf",
+  event = "sos_out_deathcvhosphf",
+  eventcr = "sos_out_deathcvhosphf_cr",
+  eventname = "First HF hospitalization/CV Death (%)",
+  efcat = "HFrEF",
+  yposplus = c(0, 0, 0) # lowest, middle, highest
+)
+```
+
+```{r kmhfhosprEFsens, fig.cap="1-KM First HF hospitalization HFrEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc("sos_outtime_hosphf", "sos_out_hosphf",
+  eventcr = "sos_out_hosphf_cr",
+  "First HF hospitalization (%)",
+  efcat = "HFrEF",
+  yposplus = c(0, 0, 0)
+)
+```
+
+```{r kmcvdrEFsens, fig.cap="1-KM CV Death HFrEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc("sos_outtime_death", "sos_out_deathcv",
+  eventcr = "sos_out_deathcv_cr",
+  "CV Death (%)",
+  efcat = "HFrEF",
+  yposplus = c(-0.005, 0.005, 0)
+)
+```
+
+```{r kmdeathrEFsens, fig.cap="1-KM Death HFrEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc("sos_outtime_death", "sos_out_death",
+  eventname = "Death (%)",
+  efcat = "HFrEF",
+  yposplus = c(0, 0, 0)
+)
+```
+
+\clearpage
+\newpage
+
+```{r kmdeathhfhospmrEFsens, fig.cap="1-KM First HF hospitalization/CV Death HFmrEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc(
+  time = "sos_outtime_hosphf",
+  event = "sos_out_deathcvhosphf",
+  eventcr = "sos_out_deathcvhosphf_cr",
+  eventname = "First HF hospitalization/CV Death (%)",
+  efcat = "HFmrEF",
+  yposplus = c(0, 0, 0)
+)
+```
+
+```{r kmhfhospmrEFsens, fig.cap="1-KM First HF hospitalization HFmrEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc("sos_outtime_hosphf", "sos_out_hosphf",
+  eventcr = "sos_out_hosphf_cr",
+  "First HF hospitalization (%)",
+  efcat = "HFmrEF",
+  yposplus = c(0, 0, 0)
+)
+```
+
+```{r kmcvdmrEFsens, fig.cap="1-KM CV Death HFmrEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc("sos_outtime_death", "sos_out_deathcv",
+  eventcr = "sos_out_deathcv_cr",
+  "CV Death (%)",
+  efcat = "HFmrEF",
+  yposplus = c(-0.003, 0.003, 0)
+)
+```
+
+```{r kmdeathmrEFsens, fig.cap="1-KM Death HFmrEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc("sos_outtime_death", "sos_out_death",
+  eventname = "Death (%)",
+  efcat = "HFmrEF",
+  yposplus = c(0, 0, 0)
+)
+```
+
+\clearpage
+\newpage
+
+```{r kmdeathhfhosppEFsens, fig.cap="1-KM First HF hospitalization/CV Death HFpEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc(
+  time = "sos_outtime_hosphf",
+  event = "sos_out_deathcvhosphf",
+  eventcr = "sos_out_deathcvhosphf_cr",
+  eventname = "First HF hospitalization/CV Death (%)",
+  efcat = "HFpEF",
+  yposplus = c(0, -0.002, 0.002)
+)
+```
+
+```{r kmhfhosppEFsens, fig.cap="1-KM First HF hospitalization HFpEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc("sos_outtime_hosphf", "sos_out_hosphf",
+  eventcr = "sos_out_hosphf_cr",
+  "First HF hospitalization (%)",
+  efcat = "HFpEF",
+  yposplus = c(0, -0.005, 0.005)
+)
+```
+
+```{r kmcvdpEFsens, fig.cap="1-KM CV Death HFpEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc("sos_outtime_death", "sos_out_deathcv",
+  eventcr = "sos_out_deathcv_cr",
+  "CV Death (%)",
+  efcat = "HFpEF",
+  yposplus = c(-0.001, 0.001, 0)
+)
+```
+
+```{r kmdeathpEFsens, fig.cap="1-KM Death HFpEF - Sensitivity analysis", cache=cacheon, dependson="kmsens"}
+kmfunc("sos_outtime_death", "sos_out_death",
+  eventname = "Death (%)",
+  efcat = "HFpEF",
+  yposplus = c(0, 0, 0)
+)
+```

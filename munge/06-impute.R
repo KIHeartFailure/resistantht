@@ -51,3 +51,38 @@ imp <-
     )
   }
 stopImplicitCluster()
+
+
+# Impute missing values sensitivity AHA definition -----------------------------
+
+noimpvars <- names(pdata)[!names(pdata) %in% c(modvars$var, "shf_ef_cat", "htsens")]
+
+ini <- mice(pdata, maxit = 0, print = F)
+
+pred <- ini$pred
+pred[, noimpvars] <- 0
+pred[noimpvars, ] <- 0 # redundant
+
+# change method used in imputation to prop odds model
+meth <- ini$method
+meth[c("scb_education", "shf_nyha")] <- "polr"
+meth[noimpvars] <- ""
+
+cl <- makeCluster(cores_2_use)
+clusterSetRNGStream(cl, 49956)
+registerDoParallel(cl)
+
+impsens <-
+  foreach(
+    no = 1:cores_2_use,
+    .combine = ibind,
+    .export = c("meth", "pred", "pdata"),
+    .packages = "mice"
+  ) %dopar% {
+    mice(pdata,
+         m = m_2_use, maxit = 10, method = meth,
+         predictorMatrix = pred,
+         printFlag = FALSE
+    )
+  }
+stopImplicitCluster()

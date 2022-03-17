@@ -1,0 +1,261 @@
+```{r ortabsens, cache=cacheon}
+orfunc <- function(efref, htval, pint = FALSE) {
+
+  # log reg regressions
+
+  # just to create a data frame for the results
+  dummymod <- glm(formula(paste0(
+    "htsens == '", htval, "' ~ ", paste(modvars$var, collapse = " + ")
+  )),
+  data = pdata
+  )
+
+  vars <- names(dummymod$coefficients)[2:length(dummymod$coefficients)]
+
+  out <- data.frame(matrix(NA, ncol = 6, nrow = length(vars)))
+
+  colnames(out) <- c("var", "orcip", "logor", "loglci", "loguci", "pint")
+
+  out[, 1] <- vars
+
+  for (i in seq_along(modvars$var)) {
+    amod <- hf_glm_mids(formula(paste0(
+      "htsens == '", htval, "' ~ ", modvars$var[i], " * relevel(shf_ef_cat, ref = '", efref, "') + ", paste(modvars$var[modvars$var != modvars$var[i]], collapse = " + ")
+    )),
+    data = impsens, subset = quote(htsens %in% c("Normal", htval))
+    )
+
+    asmod <- summary(pool(amod))
+
+    rownos <- c(1:length(vars))[str_detect(asmod$term[1:length(vars)], modvars$var[i])]
+    rownosout <- c(1:length(vars))[str_detect(vars, modvars$var[i])]
+
+    unit <- modvars %>%
+      filter(var == var[i]) %>%
+      pull(unit)
+
+    out[rownosout, 2] <- paste0(
+      dF(exp(asmod$estimate[rownos])^unit, dig = 2),
+      " (", dF(exp(asmod$estimate[rownos] - global_z05 * asmod$std.error[rownos])^unit, dig = 2),
+      "-", dF(exp(asmod$estimate[rownos] + global_z05 * asmod$std.error[rownos])^unit, dig = 2), "), ",
+      dF(asmod$p.value[rownos], dig = 3, p = TRUE)
+    )
+
+    out[rownosout, 3] <- asmod$estimate[rownos] * unit
+    out[rownosout, 4] <- (asmod$estimate[rownos] - global_z05 * asmod$std.error[rownos]) * unit
+    out[rownosout, 5] <- (asmod$estimate[rownos] + global_z05 * asmod$std.error[rownos]) * unit
+
+    if (pint) {
+      amodnoint <- hf_glm_mids(formula(paste0(
+        "htsens == '", htval, "' ~ ", modvars$var[i], " + relevel(shf_ef_cat, ref = '", efref, "') + ", paste(modvars$var[modvars$var != modvars$var[i]], collapse = " + ")
+      )),
+      data = impsens, subset = quote(htsens %in% c("Normal", htval))
+      )
+
+      int <- D1(amod, amodnoint)
+
+      out[rownosout, 6] <- dF(int$result[[1, "P(>F)"]], dig = 3, p = 3)
+    }
+  }
+  return(out)
+}
+
+orrefnr <- orfunc(efref = "HFrEF", htval = "Non-resistant HT", pint = T)
+orrefr <- orfunc(efref = "HFrEF", htval = "Resistant HT", pint = T)
+ormrefnr <- orfunc("HFmrEF", htval = "Non-resistant HT")
+ormrefr <- orfunc("HFmrEF", htval = "Resistant HT")
+orpefnr <- orfunc("HFpEF", htval = "Non-resistant HT")
+orpefr <- orfunc("HFpEF", htval = "Resistant HT")
+```
+
+```{r ortabprintsens, cache=cacheon, dependson="ortabsens"}
+
+orall <- cbind(
+  orrefnr[, 1:2], orrefr[, 2],
+  ormrefnr[, 2], ormrefr[, 2],
+  orpefnr[, 2], orpefr[, 2],
+  orrefnr[, 6], orrefr[, 6]
+)
+
+orall <- orall %>% mutate(var = sanitizeTextFunc(var))
+
+colnames(orall) <- c(
+  "Variable",
+  rep(c(levels(pdata$ht)[2:3]), 4)
+)
+
+write.xlsx(orall, paste0("./output/tabs/orall_sens_", Sys.Date(), ".xlsx"), rowNames = FALSE)
+
+footnote(mykable(
+  orall,
+  fontsize = 10,
+  caption = paste0("Association between baseline characteristics and HT by EF - Sensitivity analysis"),
+  escape = FALSE
+) %>%
+  landscape() %>%
+  add_header_above(c(" " = 1, "HFrEF" = 2, "HFmrEF" = 2, "HFpEF" = 2, "p-value interaction with EF" = 2)),
+general = c(
+  "Adjusted Odds Ratio (95% CI), p-value compared to Normal",
+  paste0(modvars %>% filter(unit != 1) %>% mutate(varunit = paste0(var, " presented in units of ", unit)) %>% pull(varunit), collapse = ", ")
+)
+)
+```
+
+```{r forestorsens, fig.cap="Forest Adjusted OR - Sensitivity analysis", dependson="ortabsens", cache=cacheon}
+
+orforestfunc <- function(forestdata) {
+  orforest <- forestdata %>%
+    filter(var %in% c(
+      "shf_sexMale", "shf_age", "shf_durationhf>6mo", "shf_nyhaII", "shf_nyhaIII", "shf_nyhaIV",
+      "shf_bmi_cat>=30", "scb_educationSecondary school", "scb_educationUniversity", "shf_gfrckdepi_cat<60",
+      "shf_heartrate", "shf_sos_com_diabetesYes", "shf_sos_com_ihdYes", "sos_com_peripheralarteryYes",
+      "sos_com_strokeYes", "shf_sos_com_afYes"
+    )) %>%
+    mutate(
+      varnr = 1:n(),
+      modnameforest = case_when(
+        var == "shf_nyhaIV" ~ "NYHA IV",
+        var == "shf_nyhaIII" ~ "NYHA III",
+        var == "shf_nyhaII" ~ "NYHA II",
+        var == "shf_durationhf>6mo" ~ "Duration of heart failure > 6 months",
+        var == "shf_age" ~ "Age (per 5-year increase)",
+        var == "scb_educationUniversity" ~ "University education",
+        var == "scb_educationSecondary school" ~ "Secondary school education",
+        var == "shf_bmi_cat>=30" ~ "BMI >= 30kg/m2",
+        var == "shf_sexMale" ~ "Men",
+        var == "shf_gfrckdepi_cat<60" ~ "eGFR <60ml/min/1.73m2",
+        var == "shf_heartrate" ~ "Heart rate (per 5 beats/min increase)",
+        var == "shf_sos_com_diabetesYes" ~ "Diabetes",
+        var == "shf_sos_com_ihdYes" ~ "Ischemic heart disease",
+        var == "sos_com_peripheralarteryYes" ~ "Peripheral arterial disease",
+        var == "sos_com_strokeYes" ~ "Stroke",
+        var == "shf_sos_com_afYes" ~ "Atrial fibrillation",
+        TRUE ~ var
+      )
+    )
+
+  orforest <- orforest %>%
+    arrange(desc(varnr))
+
+  # exp(min(as.numeric(c(orforest$HFrEFlci, orforest$HFmrEFlci, orforest$HFpEFlci)), na.rm=T))  0.1675443
+  # exp(max(as.numeric(c(orforest$HFrEFuci, orforest$HFmrEFuci, orforest$HFpEFuci)), na.rm=T))  2.479412
+
+  xaxisvals <- c(0.1, 1, 2.5)
+
+  cextext <- 1
+  # c(bottom, left, top, right)
+  par(mar = c(3, 14, 0, 0) + 0.2)
+
+  plot(orforest$logor...2, 1:nrow(orforest),
+    xlab = "",
+    xlim = c(
+      log(0.1),
+      log(2.5) + 3.8
+    ),
+    ylim = c(1, nrow(orforest) + 1),
+    axes = FALSE,
+    ylab = NA,
+    cex.lab = 1,
+    main = NA,
+    cex = 1.5,
+    type = "p",
+    pch = 22,
+    bg = global_kicols[1],
+    col = global_kicols[1]
+  )
+
+
+  for (i in 1:nrow(orforest)) {
+    if (!is.na(orforest$loglci...3[i])) {
+      matplot(c(orforest$loglci...3[i], orforest$loguci...4[i]), c(i, i),
+        type = "l", add = TRUE, col = global_kicols[1], lwd = 1
+      )
+    }
+  }
+
+  matplot(c(0, 0), c(-1, nrow(orforest) + 0.5), type = "l", lty = 3, add = TRUE, col = "black")
+
+  axis(1,
+    cex.axis = cextext, at = log(xaxisvals),
+    labels = xaxisvals
+  )
+
+  axis(2,
+    at = 1:(nrow(orforest)),
+    labels = orforest$modnameforest,
+    cex.axis = cextext, tick = FALSE, las = 2, line = 13, hadj = 0
+  )
+
+  axis(1,
+    at = 0, cex.axis = cextext,
+    labels = "OR (95% CI)", line = 1, tick = FALSE
+  )
+
+  axis(3,
+    at = 0, cex.axis = cextext,
+    labels = "Non-TRH", line = -2.1, tick = FALSE
+  )
+
+  # atrh
+  addx <- 3.7
+  matplot(orforest$logor...5 + addx,
+    1:nrow(orforest),
+    xlab = "",
+    xlim = c(
+      log(0.1) + addx,
+      log(2.5) + addx
+    ),
+    ylim = c(1, nrow(orforest) + 1),
+    axes = FALSE,
+    ylab = NA,
+    cex.lab = 1,
+    main = NA,
+    cex = 1.5,
+    type = "p",
+    pch = 22,
+    bg = global_kicols[1],
+    col = global_kicols[1],
+    add = T
+  )
+
+  for (i in 1:nrow(orforest)) {
+    if (!is.na(orforest$loglci...6[i])) {
+      matplot(c(orforest$loglci...6[i] + addx, orforest$loguci...7[i] + addx), c(i, i),
+        type = "l", add = TRUE, col = global_kicols[1], lwd = 1
+      )
+    }
+  }
+
+  matplot(c(0 + addx, 0 + addx), c(-1, nrow(orforest) + 0.5), type = "l", lty = 3, add = TRUE, col = "black")
+
+  axis(1,
+    cex.axis = cextext, at = log(xaxisvals) + addx,
+    labels = xaxisvals
+  )
+
+  axis(1,
+    at = 0 + addx, cex.axis = cextext,
+    labels = "OR (95% CI)", line = 1, tick = FALSE
+  )
+
+  axis(3,
+    at = 0 + addx, cex.axis = cextext,
+    labels = "aTRH", line = -2.1, tick = FALSE
+  )
+}
+```
+
+```{r forestorrefsens, fig.cap="Forest Adjusted OR - HFrEF - Sensitivity analysis", dependson=c("ortabsens", "forestorsens"), cache=cacheon}
+
+orforestfunc(forestdata = bind_cols(orrefnr[, c(1, 3:5)], orrefr[, 3:5]))
+```
+
+```{r forestormrefsens, fig.cap="Forest Adjusted OR - HFmrEF - Sensitivity analysis", dependson=c("ortabsens", "forestorsens"), cache=cacheon}
+
+orforestfunc(forestdata = bind_cols(ormrefnr[, c(1, 3:5)], ormrefr[, 3:5]))
+```
+
+```{r forestorpefsens, fig.cap="Forest Adjusted OR - HFpEF - Sensitivity analysis", dependson=c("ortabsens", "forestorsens"), cache=cacheon}
+
+orforestfunc(forestdata = bind_cols(orpefnr[, c(1, 3:5)], orpefr[, 3:5]))
+```
